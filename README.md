@@ -305,6 +305,9 @@ Every response is a single JSON object with a consistent envelope.
 
 The `appraise` call returns roughly 100 data points per domain. The fields
 above are illustrative; treat any value of `-1` (or `-1.00`) as "not available."
+For a complete description of every field — types, units, sentinel-value
+conventions, and enum mappings — see
+[Appraisal Tool — Field Reference](docs/appraise-fields.md).
 
 </details>
 
@@ -426,6 +429,12 @@ Appraise `test.com` and `great.com` in `cache` mode:
 ```
 https://public-api.estibot.com/api?k=YOUR_API_KEY&a=appraise&t=cache&d=test.com>>great.com
 ```
+
+**Field reference**
+
+See [Appraisal Tool — Field Reference](docs/appraise-fields.md) for every field
+returned in the response, including types, units, sentinel conventions, and
+enum mappings (`price_range_*`, `site_status`).
 
 ---
 
