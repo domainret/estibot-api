@@ -17,6 +17,7 @@ domain name information as normalized JSON.
 - [Authentication](#authentication)
 - [Request Format](#request-format)
 - [Response Format](#response-format)
+- [Rate Limits](#rate-limits)
 - [Errors](#errors)
 - [Live vs. Cache Queries](#live-vs-cache-queries)
 - [API Calls](#api-calls)
@@ -32,7 +33,8 @@ domain name information as normalized JSON.
 
 ## Access & Licensing
 
-- The API is available to **Expert** customers only.
+- The API is available to higher level accounts such as **Advanced** or
+  **Expert** customers only.
 - Queries made through the API are treated exactly like queries run on the
   website and **increment your query counters** the same way.
 - Data provided by EstiBot **cannot be republished, resold, or redistributed**
@@ -66,7 +68,7 @@ A valid request has the following components.
 | Parameter | Description |
 |-----------|-------------|
 | `k` | Your API key. |
-| `a` | The tool you are calling — e.g. `appraise`, `lead`, `drops`, `zone_diff`, `bid_tool`, `site_info`. |
+| `a` | The tool you are calling — one of `appraise`, `lead`, `drops`, `zone_diff`, `bid_tool`, `site_info`. |
 | `d` | The data to process, usually a domain or keyword. Multiple items are delimited with `>>` — for example `test.com>>fun.com>>cars.com`. |
 
 ### Optional parameters
@@ -308,17 +310,59 @@ above are illustrative; treat any value of `-1` (or `-1.00`) as "not available."
 
 ---
 
+## Rate Limits
+
+The API endpoint applies per-client-IP rate limiting to protect the service.
+Current limits are:
+
+| Limit | Scope | Notes |
+|-------|-------|-------|
+| **3 requests / second** | per IP | Short bursts above this are absorbed up to a small allowance, then throttled. |
+| **100 requests / minute** | per IP | Volume ceiling per client IP. |
+
+When a limit is exceeded, the endpoint returns HTTP **429** with the standard
+JSON error envelope (see [Errors](#errors)). Clients should watch for `429`
+responses and back off / retry rather than continuing to hammer the endpoint.
+
+In addition to these endpoint-level limits, **individual API calls have their
+own restrictions** (maximum domains per request, daily download caps, single
+in-flight query rules, etc.). Those are documented under each call in
+[API Calls](#api-calls).
+
+> Limits are subject to change. Build clients to handle `429` and other error
+> responses gracefully rather than assuming a fixed ceiling.
+
+---
+
 ## Errors
 
 When a request fails, `success` is `false` and `message` describes the problem.
 The envelope is still returned so clients can parse failures the same way as
-successes. For example, a request with a missing or invalid API key returns:
+successes. **Always check `success` before reading `results`.**
+
+Common error responses:
+
+| HTTP status | `message` | Cause |
+|-------------|-----------|-------|
+| `400` | `Invalid API key.` | The `k` parameter is missing or malformed. |
+| `400` | `Invalid or missing tool (a).` | The `a` parameter is missing or is not a supported tool. |
+| `429` | `Rate limit exceeded.` | Too many requests from your IP (see [Rate Limits](#rate-limits)). |
+
+Example error response (invalid key):
 
 ```json
 {"success":false,"message":"Invalid API key.","redirect_url":"","results":{"total":0,"count":0,"start":0,"end":0,"data":[]}}
 ```
 
-Always check `success` before reading `results`.
+Example error response (rate limit exceeded):
+
+```json
+{"success":false,"message":"Rate limit exceeded.","redirect_url":"","results":{"total":0,"count":0,"start":0,"end":0,"data":[]}}
+```
+
+> The origin may also return its own `success:false` messages for conditions
+> beyond the above (e.g. account-level restrictions or per-call limits). Treat
+> any response with `success:false` as a failure and read `message` for detail.
 
 ---
 
